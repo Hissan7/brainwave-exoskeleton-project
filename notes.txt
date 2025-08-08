@@ -1,0 +1,116 @@
+Final EEG shape: (288, 25, 1125)
+Final label shape: (288,)
+Unique classes: [1 2 3 4]
+
+Final EEG shape: this basically shows the dimensions of the data. so (288, 25, 1125) means there are 
+288 trials, over 25 channels with the 1125 number of timepoints in each trial 
+(how many samples in time for that trial)
+
+Final label shape: this is the dimension of the array that holds the label numbers
+so (288,) shows that it is a 1d array with 288 labels e.g [1,2,4,2,3...]
+
+
+07/08/25
+
+Final EEG shape: (288, 25, 1125)
+Final label shape: (288,)
+Unique classes: [1 2 3 4]
+Filtered EEG shape: (144, 25, 1125)
+Filtered labels: [1 2]
+
+right now this is the output of the program along with the matplotlib graph
+the filtered eeg shape shows that there are 144 labels instead of 288, meaning 144 labels were 3,4
+
+
+---------Explanation of bandpass_8_30 and the csp_lda_baseline functions---------------------------
+
+This is an explanation of everything after line 169 pretty much
+
+We want a program that can look at short chunks of brain data (EEG) and say: “this trial is left‑hand” or “this trial is right‑hand.”
+
+Things already done ---------
+1. Loaded the raw recordings,
+2. Cut them into trials (little windows of EEG),
+3. Kept only the trials labeled left (1) or right (2),
+4. Plotted a couple channels.
+
+Next step ---------
+
+Before we try any ML, we need to clean the signal so the motor information stands out. 
+The simplest, most useful cleaning is a band‑pass filter around the motor bands (8–30 Hz). 
+That’s it. 
+Then we’ll try a quick baseline classifier to see if the data is separable.
+Keep everything in the same file for now
+
+If u don't know what a Band-pass filter is ---------
+
+EEG contains lots of frequencies, most of which are noise for our task.
+A band-pass filter keeps only the frequencies in a certain range and throws the rest away.
+For motor imagery, the interesting brain rhythms are mostly:
+Mu band: 8–12 Hz
+Beta band: 13–30 Hz
+So a band-pass filter 8–30 Hz means:
+“Keep brain waves between 8 and 30 cycles per second, ignore everything slower or faster.”
+
+If u don't know what a baseline classifier is ---------
+
+A classifier is an algorithm that looks at the data and predicts the label (left or right).
+A baseline classifier is just the first, simple model we use to check if our data is separable at all.
+We don’t care if it’s the best model cos we can just improve on it and compare to prev vrsns.
+For EEG motor imagery, a common baseline is:
+CSP (Common Spatial Patterns) : picks the best channel combinations for left vs right
+LDA (Linear Discriminant Analysis) : a very simple prediction model
+
+now we have a fully working pipeline. now i gotta make it stronger 
+
+Better preprocessing + stronger model ---------
+
+After slight optimisation 
+
+What I don’t actually “need” right now
+
+Both classifiers: keep either csp_lda_baseline or csp_svm_baseline. (SVM isstronger; LDA is fine as a quick check.)
+Plotting helpers (get_channel_indices, plot_example_trial) are optional; keep them only if to visualize.
+If not in UK/EU, switch the notch freqs to (60, 120) else its (50,100)
+
+Everything else is serving a purpose:
+
+loader/segmenter → builds (trials, channels, time)
+left/right filter → keeps just the two classes
+notch/bandpass/z-score → minimal but meaningful cleaning
+CSP + classifier → the measurable baseline
+
+Run this and share the new SVM accuracy; then we can decide whether to add ICA or ERD features next.
+
+everything we have done so far up to this point --------------
+
+Step 1 — Load & Segment Trials
+EEG is stored as continuous signals. The dataset gives you the start time of each trial and its label.
+The loader:
+Reads .mat files from the dataset
+Cuts the continuous EEG into 48-trial chunks per run
+Produces an array shaped (trials, channels, timepoints)
+Example: (288, 25, 1125) means 288 trials, 25 electrodes, 1125 samples (4.5 seconds) per trial.
+
+Step 2 — Preprocessing (Cleaning)
+EEG contains:
+Low-frequency drift
+High-frequency muscle noise
+Powerline interference (50 Hz in UK/EU, 60 Hz in US)
+Random amplitude differences
+The code cleans it with:
+filter_left_right() → keeps only trials with labels 1 or 2.
+notch_filter() → removes mains hum at 50/60 Hz and its harmonic.
+bandpass_8_30() → keeps only 8–30 Hz (mu/beta bands) where motor imagery lives.
+zscore_per_channel() → standardizes each channel so all are on the same scale.
+This step improves the signal-to-noise ratio so the classifier sees mostly relevant patterns.
+
+Step 3 — Feature Extraction + Classification
+Raw EEG is high-dimensional and noisy. We use:
+CSP (Common Spatial Patterns) → finds the best combinations of channels that differ between left/right trials.
+LDA or SVM → simple classifiers to test how separable the classes are.
+We use cross-validation (train/test splits) to get a reliable estimate of accuracy.
+The output CSP+SVM 5-fold accuracy: 0.78 ± 0.05 means:
+On average, the model gets 78% correct
+±0.05 means it varies about 5% between folds
+This number is your baseline accuracy — the starting point for future improvements.
