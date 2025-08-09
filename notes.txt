@@ -114,3 +114,32 @@ The output CSP+SVM 5-fold accuracy: 0.78 ± 0.05 means:
 On average, the model gets 78% correct
 ±0.05 means it varies about 5% between folds
 This number is your baseline accuracy — the starting point for future improvements.
+
+parameter explanation -----
+
+n_components (CSP part)
+CSP finds spatial filters — special combinations of EEG channels that maximize the difference between left and right conditions.
+If you keep n_components = 6, that means:
+Take the 3 most “left-like” filters and the 3 most “right-like” filters.
+These become your features for classification.
+Small n_components → fewer features, possibly missing useful patterns.
+Large n_components → more features, but also more noise and risk of overfitting.
+Sweeping n_components lets you test how many CSP features give the best accuracy.
+
+C (SVM part)
+In an SVM, C is the “regularization strength” parameter.
+Controls the trade-off between:
+Small C: wider margin, more tolerance for misclassified points (simpler model, less overfitting).
+Large C: tries to classify every training point correctly (more complex model, can overfit).
+Sweeping C tests whether the classifier should be stricter (big C) or more forgiving (small C).
+
+
+BEST ACCURACY RESULT SO FAR 
+
+nc=8, C=2.0 -> 0.708 ± 0.020
+
+number of components (nc) is 8 meaning there are 4 most "left like" and 4 most "right like" combinations of EEG
+channels that maximise the difference between the difference between the left and right conditions 
+
+C value (C) is 2 meaning that there is more leniance for misclassification of L and R signals 
+but there is less chance of overfitting 
