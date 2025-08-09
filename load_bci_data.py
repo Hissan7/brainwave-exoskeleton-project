@@ -365,6 +365,7 @@ def csp_svm_baseline(X, y, n_components=6, C = 2.0):
     clf = SVC(kernel='rbf', C=C, gamma='scale')
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     scores = []
+    accuracies = []
     for tr, te in cv.split(X, y):
         Xtr, Xte = X[tr], X[te]; ytr, yte = y[tr], y[te]
         Xtr_csp = csp.fit_transform(Xtr, ytr)
@@ -373,31 +374,100 @@ def csp_svm_baseline(X, y, n_components=6, C = 2.0):
         scores.append(clf.score(Xte_csp, yte))
     print(f"CSP+SVM 5-fold accuracy: {np.mean(scores):.3f} ± {np.std(scores):.3f}")
 
+
+# Goal: Given EEG data X and labels y, measure how well CSP+SVM can classify left vs right.
+# CSP (Common Spatial Patterns): Finds channel combinations that maximize the variance difference between classes — basically “spatial filters” tuned to left vs right motor activity.
+# SVM (Support Vector Machine): Takes the CSP features and learns a decision boundary to separate the two classes.
+# Cross-validation: StratifiedKFold splits the dataset into train/test sets multiple times to avoid overfitting and to give a reliable average accuracy.
+# Output: Mean accuracy and standard deviation across folds.
+
+# So this function answers:
+# “If I use these CSP settings (n_components) and SVM settings (C), how accurate is the model on this data?”
+
+def eval_csp_svm(X, y, n_components=6, C=2.0, cov_est='concat'):
+    csp = CSP(n_components=n_components, reg=None, log=True, cov_est=cov_est)
+    clf = SVC(kernel='rbf', C=C, gamma='scale')
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    scores = []
+    for tr, te in cv.split(X, y):
+        Xtr, Xte, ytr, yte = X[tr], X[te], y[tr], y[te]
+        Xtr_csp = csp.fit_transform(Xtr, ytr)
+        Xte_csp = csp.transform(Xte)
+        clf.fit(Xtr_csp, ytr)
+        scores.append(clf.score(Xte_csp, yte))
+    return float(np.mean(scores)), float(np.std(scores))
+
+# Goal: Figure out which time slice of each trial gives the best accuracy.
+# Trials are a few seconds long, but motor imagery might only be strongest in a specific window (e.g., starting 0.5s after the cue for 2 seconds).
+# starts: List of possible start times after the trial begins.
+# durs: Possible window lengths.
+# For each (start, duration) combination:
+# Crop the EEG to that time range using crop_time_window.
+# Run eval_csp_svm to see how accurate classification is in that window.
+# Keep track of the best combination.
+# Output: Prints accuracy for every tested window and the best one found.
+
+# So this answers:
+# “When in time should I look at the EEG for the clearest left vs right separation?”
+    
+def grid_search_time(X_full, y, fs=250):
+    starts = [0.0, 0.5, 1.0, 1.5]      # seconds after trial start
+    durs   = [1.5, 2.0, 2.5, 3.0]      # window length (s)
+    best = None
+    for s in starts:
+        for d in durs:
+            Xc = crop_time_window(X_full, fs, s, d)
+            if Xc.shape[-1] <= 10:   # too short -> skip
+                continue
+            mean, std = eval_csp_svm(Xc, y, n_components=6, C=2.0, cov_est='concat')
+            print(f"start={s:.1f}s dur={d:.1f}s -> acc={mean:.3f} ± {std:.3f} (nT={Xc.shape[0]}, nCh={Xc.shape[1]}, nTps={Xc.shape[2]})")
+            if best is None or mean > best[0]:
+                best = (mean, std, s, d)
+    print(f"BEST window: start={best[2]:.1f}s dur={best[3]:.1f}s -> {best[0]:.3f} ± {best[1]:.3f}")
+
 # -----------------------
 # Main
 # -----------------------
 if __name__ == "__main__":
+    # 1) Load & keep only left/right
     X, y = load_and_segment_trials("data/A01T.mat")
     X, y = filter_left_right(X, y)
 
-    # Preprocess: notch -> bandpass -> z-score
-    X = notch_filter(X, fs=250, freqs=(50, 100))  # change to (60, 120) if you're on US mains
+    # 2) Minimal preprocessing (US mains)
+    X = notch_filter(X, fs=250, freqs=(60, 120))  # US
     X = bandpass_8_30(X, fs=250)
-    X = zscore_per_channel(X)
-    X = crop_time_window(X, fs=250, start_s=0.5, dur_s=2.0)
 
-    # Optional sanity plots
-    # plot_example_trial(X, y, trial_idx=0)
-    # plot_example_trial(X, y, trial_idx=1)
+    # 3) Baselines
+    print("\n=== Baseline (no crop, no z-score) ===")
+    csp_lda_baseline(X, y)
+    csp_svm_baseline(X, y, n_components=6)  # default
 
-    # Baselines
-    #csp_lda_baseline(X, y)
-    csp_svm_baseline(X, y)
-
-    for nc in [4,6,8]:
+    # 4) Small, tidy sweep for CSP+SVM (components × C)
+    print("\n=== CSP+SVM small sweep ===")
+    for nc in [4, 6, 8]:
         for C in [0.5, 1.0, 2.0, 4.0]:
-            print(f"nc={nc}, C={C}")
-            csp_svm_baseline(X, y, n_components=nc, C=C)
+            mean, std = eval_csp_svm(X, y, n_components=nc, C=C, cov_est='concat')
+            print(f"nc={nc}, C={C} -> {mean:.3f} ± {std:.3f}")
+
+    # 5) (Optional) quick crop search — toggle this flag if you want to try windows
+    DO_CROP_SEARCH = False
+    if DO_CROP_SEARCH:
+        print("\n=== Quick crop window search ===")
+        starts = [0.0, 0.5, 1.0, 1.5]
+        durs   = [1.5, 2.0, 2.5, 3.0]
+        best = None
+        for s in starts:
+            for d in durs:
+                Xc = crop_time_window(X, fs=250, start_s=s, dur_s=d)
+                if Xc.shape[-1] < 100:  # ignore tiny windows
+                    continue
+                mean, std = eval_csp_svm(Xc, y, n_components=6, C=2.0)
+                print(f"start={s:.1f}s, dur={d:.1f}s -> {mean:.3f} ± {std:.3f}")
+                if best is None or mean > best[0]:
+                    best = (mean, std, s, d)
+        if best:
+            print(f"BEST: start={best[2]:.1f}s, dur={best[3]:.1f}s -> {best[0]:.3f} ± {best[1]:.3f}")
+
 
 
 
