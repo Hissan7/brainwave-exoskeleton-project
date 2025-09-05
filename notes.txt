@@ -56,7 +56,7 @@ If u don't know what a baseline classifier is ---------
 
 A classifier is an algorithm that looks at the data and predicts the label (left or right).
 A baseline classifier is just the first, simple model we use to check if our data is separable at all.
-We don’t care if it’s the best model cos we can just improve on it and compare to prev vrsns.
+We don’t care if it’s the best model because we can just improve on it and compare to prev vrsns.
 For EEG motor imagery, a common baseline is:
 CSP (Common Spatial Patterns) : picks the best channel combinations for left vs right
 LDA (Linear Discriminant Analysis) : a very simple prediction model
@@ -67,9 +67,9 @@ Better preprocessing + stronger model ---------
 
 After slight optimisation 
 
-What I don’t actually “need” right now
+What isnt actually needed right now
 
-Both classifiers: keep either csp_lda_baseline or csp_svm_baseline. (SVM isstronger; LDA is fine as a quick check.)
+Both classifiers: keep either csp_lda_baseline or csp_svm_baseline. (SVM is stronger; LDA is fine as a quick check.)
 Plotting helpers (get_channel_indices, plot_example_trial) are optional; keep them only if to visualize.
 If not in UK/EU, switch the notch freqs to (60, 120) else its (50,100)
 
@@ -143,3 +143,62 @@ channels that maximise the difference between the difference between the left an
 
 C value (C) is 2 meaning that there is more leniance for misclassification of L and R signals 
 but there is less chance of overfitting 
+
+------------------------------------------------------------------------------------------------------------------------
+TO DO 
+
+FIND THE BEST COV_EST THROUGH RUNNING THEM WITH EACH COV_EST TO FIND THE BEST ACCURACY
+
+SO FAR 05/09/25 COV_EST = 'concat' gives me : 
+
+CSP+LDA (nc=6, cov=concat): 0.694 ± 0.069 
+CSP+SVM (nc=6, C=2.0, cov=concat): 0.659 ± 0.069
+CSP+LDA (nc=8, cov=concat): 0.764 ± 0.093
+CSP+SVM (nc=4, C=0.5, cov=concat): 0.736 ± 0.073
+CSP+SVM (nc=4, C=1.0, cov=concat): 0.750 ± 0.085
+CSP+SVM (nc=4, C=2.0, cov=concat): 0.764 ± 0.072
+CSP+SVM (nc=4, C=4.0, cov=concat): 0.764 ± 0.060
+CSP+SVM (nc=6, C=0.5, cov=concat): 0.723 ± 0.056
+CSP+SVM (nc=6, C=1.0, cov=concat): 0.750 ± 0.050
+CSP+SVM (nc=6, C=2.0, cov=concat): 0.785 ± 0.054
+CSP+SVM (nc=6, C=4.0, cov=concat): 0.792 ± 0.042
+CSP+SVM (nc=8, C=0.5, cov=concat): 0.799 ± 0.059
+CSP+SVM (nc=8, C=1.0, cov=concat): 0.785 ± 0.079
+CSP+SVM (nc=8, C=2.0, cov=concat): 0.799 ± 0.062
+CSP+SVM (nc=8, C=4.0, cov=concat): 0.799 ± 0.054
+
+SO FAR 05/09/25 COV_EST = 'oas' gives me : 
+
+CSP+LDA (nc=6, cov=concat, reg=oas): 0.694 ± 0.069
+CSP+SVM (nc=6, C=2.0, cov=concat, reg=oas): 0.659 ± 0.069
+CSP+LDA (nc=8, cov=concat, reg=oas): 0.764 ± 0.093
+CSP+SVM (nc=4, C=0.5, cov=concat, reg=oas): 0.736 ± 0.073
+CSP+SVM (nc=4, C=1.0, cov=concat, reg=oas): 0.750 ± 0.085
+CSP+SVM (nc=4, C=2.0, cov=concat, reg=oas): 0.778 ± 0.052
+CSP+SVM (nc=4, C=4.0, cov=concat, reg=oas): 0.771 ± 0.064
+CSP+SVM (nc=6, C=0.5, cov=concat, reg=oas): 0.723 ± 0.056
+CSP+SVM (nc=6, C=1.0, cov=concat, reg=oas): 0.750 ± 0.050
+CSP+SVM (nc=6, C=2.0, cov=concat, reg=oas): 0.785 ± 0.054
+CSP+SVM (nc=6, C=4.0, cov=concat, reg=oas): 0.799 ± 0.044
+CSP+SVM (nc=8, C=0.5, cov=concat, reg=oas): 0.799 ± 0.066
+CSP+SVM (nc=8, C=1.0, cov=concat, reg=oas): 0.792 ± 0.068
+CSP+SVM (nc=8, C=2.0, cov=concat, reg=oas): 0.806 ± 0.070
+CSP+SVM (nc=8, C=4.0, cov=concat, reg=oas): 0.806 ± 0.063
+
+SO FAR 05/09/25 COV_EST = 'ledoit_wolf' gives me : 
+
+CSP+LDA (nc=6, cov=concat, reg=ledoit_wolf): 0.659 ± 0.095
+CSP+SVM (nc=6, C=2.0, cov=concat, reg=ledoit_wolf): 0.624 ± 0.093
+CSP+LDA (nc=8, cov=concat, reg=ledoit_wolf): 0.764 ± 0.093
+CSP+SVM (nc=4, C=0.5, cov=concat, reg=ledoit_wolf): 0.736 ± 0.073
+CSP+SVM (nc=4, C=1.0, cov=concat, reg=ledoit_wolf): 0.750 ± 0.085
+CSP+SVM (nc=4, C=2.0, cov=concat, reg=ledoit_wolf): 0.778 ± 0.052
+CSP+SVM (nc=4, C=4.0, cov=concat, reg=ledoit_wolf): 0.771 ± 0.064
+CSP+SVM (nc=6, C=0.5, cov=concat, reg=ledoit_wolf): 0.723 ± 0.056
+CSP+SVM (nc=6, C=1.0, cov=concat, reg=ledoit_wolf): 0.750 ± 0.050
+CSP+SVM (nc=6, C=2.0, cov=concat, reg=ledoit_wolf): 0.785 ± 0.054
+CSP+SVM (nc=6, C=4.0, cov=concat, reg=ledoit_wolf): 0.799 ± 0.044
+CSP+SVM (nc=8, C=0.5, cov=concat, reg=ledoit_wolf): 0.806 ± 0.063
+CSP+SVM (nc=8, C=1.0, cov=concat, reg=ledoit_wolf): 0.792 ± 0.068
+CSP+SVM (nc=8, C=2.0, cov=concat, reg=ledoit_wolf): 0.813 ± 0.077
+CSP+SVM (nc=8, C=4.0, cov=concat, reg=ledoit_wolf): 0.806 ± 0.063
