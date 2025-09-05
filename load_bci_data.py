@@ -1,241 +1,23 @@
-# ROUGH CODE JUST TO SHOW THE KEYS OF THE DATA SET ------------------
-
-# import scipy.io
-# import numpy as np
-
-# def load_bci_data(filepath):
-#     mat = scipy.io.loadmat(filepath)
-
-#     print("Available keys:", mat.keys())  # ← Add this line
-
-#     # You can return early just to see the keys for now
-#     return None, None
-
-# if __name__ == "__main__":
-#     load_bci_data("data/A01T.mat")
-
-# ROUGH SCRIPT TO SHOW WHAT TYPE OF DATASTRUCTURE IT IS ------------------
-
-# import scipy.io
-# import numpy as np
-
-# def load_bci_data(filepath):
-#     mat = scipy.io.loadmat(filepath, struct_as_record=False, squeeze_me=True)
-
-#     print("Top-level keys:", mat.keys())
-#     print("Type of mat['data']:", type(mat['data']))
-#     print("mat['data'] content:", mat['data'])
-
-#     return None, None
-
-# if __name__ == "__main__":
-#     load_bci_data("data/A01T.mat")
-
-# ------------------------------------------------------------------------
-
-# import scipy.io
-# import numpy as np
-
-# def load_bci_data(filepath):
-#     # Load the .mat file
-#     mat = scipy.io.loadmat(filepath, struct_as_record=False, squeeze_me=True)
-
-#     for i in range(9):
-#         # Extract the first run (you can loop through others later)
-#         run = mat['data'][i]  # First of 9 runs
-
-#         # Extract EEG data and labels
-#         X = run.X             # EEG data: shape (trials, channels, time)
-#         y = run.y             # Labels: shape (trials,)
-
-#         print("EEG shape:", X.shape)  # e.g., (48, 22, 1125)
-#         print("Labels shape:", y.shape)
-#         print("Unique classes:", np.unique(y))
-#         print(f"That index was {i}")
-#         print("")
-
-#     return X, y
-    
-
-# if __name__ == "__main__":
-#     X, y = load_bci_data("data/A01T.mat")
-
-# ------------------------------------------------------------------------
-
-# import scipy.io
-# import numpy as np
-# import matplotlib.pyplot as plt
-# from scipy.signal import butter, filtfilt, iirnotch
-# from mne.decoding import CSP
-# from sklearn.svm import SVC
-# from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
-# from sklearn.model_selection import StratifiedKFold
-
-# def load_and_segment_trials(filepath):
-#     mat = scipy.io.loadmat(filepath, struct_as_record=False, squeeze_me=True)
-    
-#     all_runs = mat['data']
-#     all_X = []
-#     all_y = []
-
-#     #Only use runs 3 to 8 (runs 0–2 are warmup/setup and don’t have usable labels).
-#     #So we're processing 6 actual motor imagery runs.
-#     for run_idx in range(3, 9): 
-#         run = all_runs[run_idx]
-
-#         eeg = run.X              # shape: (samples, channels)
-#         labels = run.y           # shape: (48,)
-#         trial_starts = run.trial # shape: (48,)
-#         n_trials = len(labels)
-#         n_channels = eeg.shape[1]
-#         n_timepoints = 1125  # each trial is 4.5s * 250Hz = 1125 samples
-
-#         # Preallocate: (trials, channels, time)
-#         trials = np.zeros((n_trials, n_channels, n_timepoints))
-
-#         for i in range(n_trials):
-#             start = trial_starts[i]
-#             trials[i] = eeg[start:start+n_timepoints].T  # transpose to (channels, time)
-
-#         all_X.append(trials)
-#         all_y.append(labels)
-
-#     # Concatenate all 6 runs together
-#     X = np.concatenate(all_X, axis=0)  # shape: (288, 25, 1125)
-#     y = np.concatenate(all_y, axis=0)  # shape: (288,)
-
-#     print("Final EEG shape:", X.shape)
-#     print("Final label shape:", y.shape)
-#     print("Unique classes:", np.unique(y))
-
-#     return X, y
-
-
-# # function to filter the data to keep only left-hand and right-hand trials (labels 1 and 2)
-# # also plot a few EEG signals from channels C3 and C4, which are over the motor cortex.
-# # y is a numpy array of all the labels e.g. [1,2,4,2,1]
-# # hence we need to filter out the trials that only correspond to 1 & 2
-# def filter_left_right(X, y):
-#     # Labels: 1 = left hand, 2 = right hand
-#     mask = (y == 1) | (y == 2)
-
-    
-#     X_filtered = X[mask] # indexing array with boolean mask. NumPy keeps only elements where mask is True i.e its label 1 or label 2
-#     y_filtered = y[mask] # indexing array with the corresponding labels 
-
-#     print(f"Filtered EEG shape: {X_filtered.shape}")
-#     print(f"Filtered labels: {np.unique(y_filtered)}")
-
-#     return X_filtered, y_filtered
-
-# def get_channel_indices():
-#     # A list of the 25 channel names used in BCI IV 2a dataset (in order)
-#     # getting C3 and C4 because these are responsible for left and right hand movements
-#     channel_names = [
-#         'Fz', 'FC1', 'FC2', 'Cz', 'C3', 'C4', 'CP1', 'CP2', 'Pz',
-#         'C5', 'C1', 'C2', 'C6', 'CP5', 'CP3', 'CP4', 'CP6',
-#         'FC5', 'FC3', 'FC4', 'FC6', 'POz', 'O1', 'Oz', 'O2'
-#     ]
-#     return channel_names.index('C3'), channel_names.index('C4')
-
-# #plotting the data
-# def plot_example_trial(X, y, trial_idx):
-#     c3_idx, c4_idx = get_channel_indices()
-
-#     signal = X[trial_idx]
-#     label = y[trial_idx]
-
-#     plt.figure(figsize=(10, 4))
-#     plt.plot(signal[c3_idx], label='C3 (left motor cortex)')
-#     plt.plot(signal[c4_idx], label='C4 (right motor cortex)')
-#     plt.title(f"Trial {trial_idx} - Label: {'Left Hand' if label == 1 else 'Right Hand'}")
-#     plt.xlabel("Time (samples)")
-#     plt.ylabel("EEG amplitude (µV)")
-#     plt.legend()
-#     plt.tight_layout()
-#     plt.show()
-
-#     # Now due to contralateral control we should expect : 
-#     # Stronger signal in C4 when imagining left-hand movement
-#     # Stronger signal in C3 when imagining right-hand movement
-    
-# def bandpass_8_30(data, fs=250, low=8, high=30, order=4):
-#     """
-#     data: (trials, channels, time)
-#     returns filtered data with the same shape
-#     """
-#     b, a = butter(order, [low/(fs/2), high/(fs/2)], btype='band')
-#     # filtfilt along time axis
-#     return filtfilt(b, a, data, axis=-1)
-
-# def csp_lda_baseline(X, y, n_components=6):
-#     csp = CSP(n_components=n_components, reg=None, log=True, cov_est='concat')
-#     clf = LDA()
-#     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
-#     scores = []
-#     for train_idx, test_idx in cv.split(X, y):
-#         X_tr, X_te = X[train_idx], X[test_idx]
-#         y_tr, y_te = y[train_idx], y[test_idx]
-
-#         X_tr_csp = csp.fit_transform(X_tr, y_tr)
-#         X_te_csp = csp.transform(X_te)
-
-#         clf.fit(X_tr_csp, y_tr)
-#         scores.append(clf.score(X_te_csp, y_te))
-
-#     print(f"CSP+LDA 5-fold accuracy: {np.mean(scores):.3f} ± {np.std(scores):.3f}")
-
-# def csp_svm_baseline(X, y, n_components=6):
-#     csp = CSP(n_components=n_components, reg=None, log=True, cov_est='concat')
-#     clf = SVC(kernel='rbf', C=1.0, gamma='scale')  # good default
-
-#     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-#     scores = []
-#     for tr, te in cv.split(X, y):
-#         Xtr, Xte = X[tr], X[te]
-#         ytr, yte = y[tr], y[te]
-#         Xtr_csp = csp.fit_transform(Xtr, ytr)
-#         Xte_csp = csp.transform(Xte)
-#         clf.fit(Xtr_csp, ytr)
-#         scores.append(clf.score(Xte_csp, yte))
-#     print(f"CSP+SVM 5-fold accuracy: {np.mean(scores):.3f} ± {np.std(scores):.3f}")
-
-# # in the UK/EU, mains = 50 Hz (and its harmonic 100 Hz). In the US, use 60/120 instead.
-# def notch_filter(data, fs=250, freqs=(60, 120), Q=30):
-#     # data: (trials, channels, time)
-#     out = data.copy()
-#     for f0 in freqs:
-#         b, a = iirnotch(w0=f0/(fs/2), Q=Q)
-#         out = filtfilt(b, a, out, axis=-1)
-#     return out
-
-# def zscore_per_channel(X):
-#     # X: (trials, channels, time)
-#     mean = X.mean(axis=-1, keepdims=True)
-#     std  = X.std(axis=-1, keepdims=True) + 1e-8
-#     return (X - mean) / std
-
-
-# if __name__ == "__main__":
-#     X, y = load_and_segment_trials("data/A01T.mat")
-#     X, y = filter_left_right(X, y)
-#     X = notch_filter(X,fs=250,freqs=(60,120))
-#     X = bandpass_8_30(X)
-#     X = zscore_per_channel(X)
-#     plot_example_trial(X, y, trial_idx=0)
-#     plot_example_trial(X, y, trial_idx=1)
-#     csp_lda_baseline(X, y)
-#     csp_svm_baseline(X, y)
-
 import numpy as np
 import scipy.io
 import matplotlib.pyplot as plt
+import os
+from joblib import dump, load
 from scipy.signal import butter, filtfilt, iirnotch
 from mne.decoding import CSP
 from sklearn.svm import SVC
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.model_selection import StratifiedKFold
+
+# ---------------------------
+# Constants
+# ---------------------------
+FS = 250               # Hz (BCI IV-2a)
+BEST_START = 1.5       # seconds (window start you found)
+BEST_DUR = 2.5         # seconds (window duration you found)
+DEFAULT_COV = 'concat' # <<< change to 'oas' or 'ledoit_wolf' later if you want
+DEFAULT_REG = 'ledoit_wolf'
+
 
 # ---------------------------
 # 1) Load and segment trials
@@ -347,45 +129,21 @@ def plot_example_trial(X, y, trial_idx):
 # -----------------------
 # 5) Baseline classifiers
 # -----------------------
-def csp_lda_baseline(X, y, n_components=6):
-    csp = CSP(n_components=n_components, reg=None, log=True, cov_est='concat')
+def csp_lda_cv(X, y, n_components=6, cov_est=DEFAULT_COV, reg=DEFAULT_REG):
+    csp = CSP(n_components=n_components, reg=reg, log=True, cov_est=cov_est)
     clf = LDA()
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     scores = []
     for tr, te in cv.split(X, y):
-        Xtr, Xte = X[tr], X[te]; ytr, yte = y[tr], y[te]
+        Xtr, Xte, ytr, yte = X[tr], X[te], y[tr], y[te]
         Xtr_csp = csp.fit_transform(Xtr, ytr)
         Xte_csp = csp.transform(Xte)
         clf.fit(Xtr_csp, ytr)
         scores.append(clf.score(Xte_csp, yte))
-    print(f"CSP+LDA 5-fold accuracy: {np.mean(scores):.3f} ± {np.std(scores):.3f}")
+    return float(np.mean(scores)), float(np.std(scores))
 
-def csp_svm_baseline(X, y, n_components=6, C = 2.0):
-    csp = CSP(n_components=n_components, reg=None, log=True, cov_est='concat')
-    clf = SVC(kernel='rbf', C=C, gamma='scale')
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    scores = []
-    accuracies = []
-    for tr, te in cv.split(X, y):
-        Xtr, Xte = X[tr], X[te]; ytr, yte = y[tr], y[te]
-        Xtr_csp = csp.fit_transform(Xtr, ytr)
-        Xte_csp = csp.transform(Xte)
-        clf.fit(Xtr_csp, ytr)
-        scores.append(clf.score(Xte_csp, yte))
-    print(f"CSP+SVM 5-fold accuracy: {np.mean(scores):.3f} ± {np.std(scores):.3f}")
-
-
-# Goal: Given EEG data X and labels y, measure how well CSP+SVM can classify left vs right.
-# CSP (Common Spatial Patterns): Finds channel combinations that maximize the variance difference between classes — basically “spatial filters” tuned to left vs right motor activity.
-# SVM (Support Vector Machine): Takes the CSP features and learns a decision boundary to separate the two classes.
-# Cross-validation: StratifiedKFold splits the dataset into train/test sets multiple times to avoid overfitting and to give a reliable average accuracy.
-# Output: Mean accuracy and standard deviation across folds.
-
-# So this function answers:
-# “If I use these CSP settings (n_components) and SVM settings (C), how accurate is the model on this data?”
-
-def eval_csp_svm(X, y, n_components=6, C=2.0, cov_est='concat'):
-    csp = CSP(n_components=n_components, reg=None, log=True, cov_est=cov_est)
+def csp_svm_cv(X, y, n_components=6, C=2.0, cov_est=DEFAULT_COV, reg=DEFAULT_REG):
+    csp = CSP(n_components=n_components, reg=reg, log=True, cov_est=cov_est)
     clf = SVC(kernel='rbf', C=C, gamma='scale')
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     scores = []
@@ -396,6 +154,20 @@ def eval_csp_svm(X, y, n_components=6, C=2.0, cov_est='concat'):
         clf.fit(Xtr_csp, ytr)
         scores.append(clf.score(Xte_csp, yte))
     return float(np.mean(scores)), float(np.std(scores))
+
+# Goal: Given EEG data X and labels y, measure how well CSP+SVM can classify left vs right.
+# CSP (Common Spatial Patterns): Finds channel combinations that maximize the variance difference between classes — basically “spatial filters” tuned to left vs right motor activity.
+# SVM (Support Vector Machine): Takes the CSP features and learns a decision boundary to separate the two classes.
+# Cross-validation: StratifiedKFold splits the dataset into train/test sets multiple times to avoid overfitting and to give a reliable average accuracy.
+# Output: Mean accuracy and standard deviation across folds.
+
+# So this function answers:
+# “If I use these CSP settings (n_components) and SVM settings (C), how accurate is the model on this data?”
+
+def eval_csp_svm(X, y, n_components=6, C=2.0, cov_est=DEFAULT_COV, reg=DEFAULT_REG):
+    """Helper for grid search; identical to csp_svm_cv but named for clarity."""
+    return csp_svm_cv(X, y, n_components=n_components, C=C, cov_est=cov_est, reg=reg)
+
 
 # Goal: Figure out which time slice of each trial gives the best accuracy.
 # Trials are a few seconds long, but motor imagery might only be strongest in a specific window (e.g., starting 0.5s after the cue for 2 seconds).
@@ -409,21 +181,79 @@ def eval_csp_svm(X, y, n_components=6, C=2.0, cov_est='concat'):
 
 # So this answers:
 # “When in time should I look at the EEG for the clearest left vs right separation?”
-    
-def grid_search_time(X_full, y, fs=250):
-    starts = [0.0, 0.5, 1.0, 1.5]      # seconds after trial start
-    durs   = [1.5, 2.0, 2.5, 3.0]      # window length (s)
+
+# -----------------------
+# 6) Time-window grid search (optional)
+# -----------------------
+
+def grid_search_time(X_full, y, fs=FS):
+    starts = [0.0, 0.5, 1.0, 1.5]
+    durs   = [1.5, 2.0, 2.5, 3.0]
     best = None
     for s in starts:
         for d in durs:
             Xc = crop_time_window(X_full, fs, s, d)
-            if Xc.shape[-1] <= 10:   # too short -> skip
+            if Xc.shape[-1] <= 10:
                 continue
-            mean, std = eval_csp_svm(Xc, y, n_components=6, C=2.0, cov_est='concat')
-            print(f"start={s:.1f}s dur={d:.1f}s -> acc={mean:.3f} ± {std:.3f} (nT={Xc.shape[0]}, nCh={Xc.shape[1]}, nTps={Xc.shape[2]})")
+            mean, std = eval_csp_svm(
+                Xc, y, n_components=6, C=2.0,
+                cov_est=DEFAULT_COV, reg=DEFAULT_REG
+            )
+            print(
+                f"start={s:.1f}s dur={d:.1f}s -> acc={mean:.3f} ± {std:.3f} "
+                f"(nT={Xc.shape[0]}, nCh={Xc.shape[1]}, nTps={Xc.shape[2]})"
+            )
             if best is None or mean > best[0]:
                 best = (mean, std, s, d)
-    print(f"BEST window: start={best[2]:.1f}s dur={best[3]:.1f}s -> {best[0]:.3f} ± {best[1]:.3f}")
+    if best:
+        print(f"BEST window: start={best[2]:.1f}s dur={best[3]:.1f}s -> {best[0]:.3f} ± {best[1]:.3f}")
+    return best
+
+
+# -----------------------
+# 7) Train & save final model
+# -----------------------
+
+def train_and_save_final_model(
+    X, y, n_components=8, C=2.0, cov_est=DEFAULT_COV, reg=DEFAULT_REG,
+    save_path="models/csp_svm_final.joblib"
+):
+    """
+    Train CSP+SVM on ALL (preprocessed, CROPPED) trials and save the fitted objects + metadata.
+    """
+    csp = CSP(n_components=n_components, reg=reg, log=True, cov_est=cov_est)
+    X_csp = csp.fit_transform(X, y)
+
+    clf = SVC(kernel='rbf', C=C, gamma='scale', probability=True)
+    clf.fit(X_csp, y)
+
+    payload = {
+        "csp": csp,
+        "clf": clf,
+        "fs": FS,
+        "best_start": BEST_START,
+        "best_dur": BEST_DUR,
+        "cov_est": cov_est,   # pooling used ('concat' or 'epoch')
+        "reg": reg,           # shrinkage used (None/OAS/LW/float)
+        "n_components": n_components,
+        "C": C,
+    }
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    dump(payload, save_path)
+    print(f"✓ Saved final model to {save_path}")
+
+def load_model_and_predict(trials, model_path="models/csp_svm_final.joblib"):
+    """
+    trials: (n_trials, n_channels, n_time) already preprocessed & CROPPED the same way.
+    returns: predicted labels and probabilities
+    """
+    payload = load(model_path)
+    csp = payload["csp"]; clf = payload["clf"]
+    X_csp = csp.transform(trials)
+    preds = clf.predict(X_csp)
+    probs = clf.predict_proba(X_csp) if hasattr(clf, "predict_proba") else None
+    return preds, probs
+
 
 # -----------------------
 # Main
@@ -434,39 +264,51 @@ if __name__ == "__main__":
     X, y = filter_left_right(X, y)
 
     # 2) Minimal preprocessing (US mains)
-    X = notch_filter(X, fs=250, freqs=(60, 120))  # US
-    X = bandpass_8_30(X, fs=250)
+    X = notch_filter(X, fs=FS, freqs=(60, 120))  # US
+    X = bandpass_8_30(X, fs=FS)
 
-    # 3) Baselines
-    print("\n=== Baseline (no crop, no z-score) ===")
-    csp_lda_baseline(X, y)
-    csp_svm_baseline(X, y, n_components=6)  # default
+    # 3) Baselines on full 4.5 s trials (no crop)
+    print("\n=== Baseline (no crop) ===")
+    m, s = csp_lda_cv(X, y, n_components=6, cov_est=DEFAULT_COV, reg=DEFAULT_REG)
+    print(f"CSP+LDA (nc=6, cov={DEFAULT_COV}, reg={DEFAULT_REG}): {m:.3f} ± {s:.3f}")
+    m, s = csp_svm_cv(X, y, n_components=6, C=2.0, cov_est=DEFAULT_COV, reg=DEFAULT_REG)
+    print(f"CSP+SVM (nc=6, C=2.0, cov={DEFAULT_COV}, reg={DEFAULT_REG}): {m:.3f} ± {s:.3f}")
 
-    # 4) Small, tidy sweep for CSP+SVM (components × C)
-    print("\n=== CSP+SVM small sweep ===")
-    for nc in [4, 6, 8]:
-        for C in [0.5, 1.0, 2.0, 4.0]:
-            mean, std = eval_csp_svm(X, y, n_components=nc, C=C, cov_est='concat')
-            print(f"nc={nc}, C={C} -> {mean:.3f} ± {std:.3f}")
-
-    # 5) (Optional) quick crop search — toggle this flag if you want to try windows
+    # 4) (Optional) quick crop search (you already found 1.5s/2.5s)
     DO_CROP_SEARCH = False
     if DO_CROP_SEARCH:
         print("\n=== Quick crop window search ===")
-        starts = [0.0, 0.5, 1.0, 1.5]
-        durs   = [1.5, 2.0, 2.5, 3.0]
-        best = None
-        for s in starts:
-            for d in durs:
-                Xc = crop_time_window(X, fs=250, start_s=s, dur_s=d)
-                if Xc.shape[-1] < 100:  # ignore tiny windows
-                    continue
-                mean, std = eval_csp_svm(Xc, y, n_components=6, C=2.0)
-                print(f"start={s:.1f}s, dur={d:.1f}s -> {mean:.3f} ± {std:.3f}")
-                if best is None or mean > best[0]:
-                    best = (mean, std, s, d)
-        if best:
-            print(f"BEST: start={best[2]:.1f}s, dur={best[3]:.1f}s -> {best[0]:.3f} ± {best[1]:.3f}")
+        grid_search_time(X, y, fs=FS)
+
+    # 5) Apply your best window (lock 1.5–4.0 s)
+    X = crop_time_window(X, fs=FS, start_s=BEST_START, dur_s=BEST_DUR)
+    print(f"\nCropped EEG shape: {X.shape} (start={BEST_START}s, dur={BEST_DUR}s)")
+
+    # 6) Baselines on cropped trials
+    print("\n=== Baseline (cropped) ===")
+    m, s = csp_lda_cv(X, y, n_components=8, cov_est=DEFAULT_COV, reg=DEFAULT_REG)
+    print(f"CSP+LDA (nc=8, cov={DEFAULT_COV}, reg={DEFAULT_REG}): {m:.3f} ± {s:.3f}")
+    for nc in [4, 6, 8]:
+        for C in [0.5, 1.0, 2.0, 4.0]:
+            m, s = csp_svm_cv(X, y, n_components=nc, C=C, cov_est=DEFAULT_COV, reg=DEFAULT_REG)
+            print(f"CSP+SVM (nc={nc}, C={C}, cov={DEFAULT_COV}, reg={DEFAULT_REG}): {m:.3f} ± {s:.3f}")
+
+    # 7) Train on ALL cropped data and save the final model
+    BEST_NC = 8
+    BEST_C = 2.0
+    print("\n=== Train final model on all cropped data ===")
+    train_and_save_final_model(
+        X, y,
+        n_components=BEST_NC,
+        C=BEST_C,
+        cov_est=DEFAULT_COV,      # pooling ('concat' now)
+        reg=DEFAULT_REG,          # shrinkage (None now)
+        save_path="models/csp_svm_final.joblib"
+    )
+
+    # Optional sanity plot:
+    # plot_example_trial(X, y, trial_idx=0)
+    
 
 
 
