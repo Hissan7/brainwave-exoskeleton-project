@@ -202,3 +202,103 @@ CSP+SVM (nc=8, C=0.5, cov=concat, reg=ledoit_wolf): 0.806 ± 0.063
 CSP+SVM (nc=8, C=1.0, cov=concat, reg=ledoit_wolf): 0.792 ± 0.068
 CSP+SVM (nc=8, C=2.0, cov=concat, reg=ledoit_wolf): 0.813 ± 0.077
 CSP+SVM (nc=8, C=4.0, cov=concat, reg=ledoit_wolf): 0.806 ± 0.063
+
+------------------------------------------------------------------------------------------------------------------------
+
+
+10/09/25
+
+I have finally completed version 1 of the pipeline. 
+
+Here is a recap of what load_bci_data.py does 
+
+This is the training pipeline. It builds the final model.
+
+Step-by-step:
+
+1. 
+Load raw EEG trials
+Reads .mat dataset (e.g., A01T.mat).
+Each run → multiple trials (4.5s long, 25 channels, 288 trials total).
+Shapes:
+(288, 25, 1125) = 288 trials × 25 EEG channels × 1125 samples.
+
+2.
+Filter only relevant classes
+Keep Left-hand (1) and Right-hand (2) trials only.
+Final dataset = 144 trials (72 Left, 72 Right).
+
+3.
+Preprocessing
+Notch filter removes mains noise (50/60 Hz).
+Bandpass filter (8–30 Hz) keeps motor cortex bands (mu/beta rhythms).
+Z-scoring (optional) standardizes signals per channel.
+Crop window: keep only [1.5s–4.0s] after cue (where motor imagery is strongest).
+
+4.
+Feature extraction with CSP
+Common Spatial Patterns (CSP): learns spatial filters that maximize variance difference between classes.
+Example: C3 channel stronger for right-hand, C4 for left-hand.
+
+5.
+Classifier training
+Tried LDA and SVM with different parameters:
+n_components (CSP filters kept) = [4, 6, 8].
+C (SVM regularization) = [0.5, 1, 2, 4].
+Found best combo → nc=8, C=2.0, cov=concat, reg=ledoit_wolf.
+
+6.
+Cross-validation
+5-fold CV to estimate generalization.
+Best accuracies ~80%.
+
+7.
+Final model training & saving
+Train on all cropped trials.
+Save everything (csp, svm, metadata) into models/csp_svm_final.joblib.
+This file is the trained brainwave decoder.
+
+
+Here is a recap of what test_model.py does
+
+This is the evaluation pipeline. It checks how well the saved model works.
+
+Step-by-step:
+
+1.
+Load saved model
+Reads models/csp_svm_final.joblib.
+Restores CSP filters, SVM classifier, and parameters.
+
+2.
+Reload & preprocess dataset
+Same preprocessing as in training:
+Load .mat file → filter left/right → notch filter → bandpass → crop [1.5s–4.0s].
+
+3.
+Predict on all trials
+Transform EEG trials into CSP space.
+Use SVM to predict Left vs Right.
+Compute evaluation metrics
+Accuracy: ~0.889 (89%).
+Confusion Matrix:
+[[61 11]   (Left correctly: 61, misclassified: 11)
+ [ 5 67]]  (Right correctly: 67, misclassified: 5)
+
+4.
+Classification Report: precision, recall, F1-score for each class.
+Plot confusion heatmap for easy visualization.
+
+5.
+Random trial sanity checks. this isnt really needed. just for random checking 
+Pick 10 random trials.
+Print:
+True label
+Predicted label
+Probability distribution [P(left), P(right)].
+Confirms the model is confident for most predictions.
+
+
+next things to do : 
+
+Generalization test → Run the model on another subject (A02T.mat) to see how well it transfers.
