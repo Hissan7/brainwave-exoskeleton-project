@@ -15,8 +15,10 @@ from sklearn.model_selection import StratifiedKFold
 FS = 250               # Hz (BCI IV-2a)
 BEST_START = 1.5       # seconds (window start you found)
 BEST_DUR = 2.5         # seconds (window duration you found)
-DEFAULT_COV = 'concat' # <<< change to 'oas' or 'ledoit_wolf' later if you want
-DEFAULT_REG = 'ledoit_wolf'
+DEFAULT_COV = 'concat' # concat is the best
+DEFAULT_REG = 'ledoit_wolf' #keeping ledoit_wolf since it gave the best accuracy 
+BEST_NC = 8
+BEST_C = 2.0
 
 
 # ---------------------------
@@ -221,6 +223,7 @@ def train_and_save_final_model(
     """
     Train CSP+SVM on ALL (preprocessed, CROPPED) trials and save the fitted objects + metadata.
     """
+    # IMPORTANT: use the reg passed into the function
     csp = CSP(n_components=n_components, reg=reg, log=True, cov_est=cov_est)
     X_csp = csp.fit_transform(X, y)
 
@@ -234,7 +237,7 @@ def train_and_save_final_model(
         "best_start": BEST_START,
         "best_dur": BEST_DUR,
         "cov_est": cov_est,   # pooling used ('concat' or 'epoch')
-        "reg": reg,           # shrinkage used (None/OAS/LW/float)
+        "reg": reg,           # shrinkage used (None/'oas'/'ledoit_wolf'/float)
         "n_components": n_components,
         "C": C,
     }
@@ -301,20 +304,10 @@ if __name__ == "__main__":
         X, y,
         n_components=BEST_NC,
         C=BEST_C,
-        cov_est=DEFAULT_COV,      # pooling ('concat' now)
-        reg=DEFAULT_REG,          # shrinkage (None now)
+        cov_est=DEFAULT_COV,      # 'concat'
+        reg=DEFAULT_REG,          # 'ledoit_wolf' (set earlier)
         save_path="models/csp_svm_final.joblib"
     )
 
     # Optional sanity plot:
     # plot_example_trial(X, y, trial_idx=0)
-    
-
-
-
-
-
-
-
-
-
