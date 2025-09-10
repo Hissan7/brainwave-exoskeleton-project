@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Brainwave Project — EEG Motor Imagery Classifier</title>
+  <meta name="description" content="CSP + SVM EEG classifier for left vs right motor imagery (BCI Competition IV-2a).">
+  <style>
+    :root{
+      --bg:#0f1220; --card:#171a2b; --text:#e9ecf1; --muted:#a8b0c3; --accent:#6ea8fe; --line:#22263b;
+      --max:1080px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    a{color:var(--accent);text-decoration:none}
+    img{max-width:100%;height:auto;border-radius:10px}
+    .wrap{max-width:var(--max);margin:0 auto;padding:24px}
+    header{padding:56px 0 24px;text-align:center}
+    header h1{margin:0 0 12px;font-size:clamp(28px,4vw,40px)}
+    header p{color:var(--muted);margin:0 auto;max-width:800px}
+    .cta{margin-top:18px;display:inline-block;background:var(--accent);color:#0a0d1a;
+         padding:11px 16px;border-radius:10px;font-weight:600}
+    section{margin:28px 0;padding:22px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+    h2{margin:0 0 12px;font-size:22px}
+    .grid{display:grid;gap:18px}
+    @media (min-width:860px){ .grid-2{grid-template-columns:1fr 1fr} }
+    ul{margin:8px 0 0 18px}
+    code, .pill{background:#0c0f1f;border:1px solid var(--line);padding:2px 8px;border-radius:999px}
+    footer{color:var(--muted);text-align:center;padding:36px 12px}
+    .small{color:var(--muted);font-size:14px}
+    .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px}
+    .kpi div{background:#0c0f1f;border:1px solid var(--line);padding:14px;border-radius:12px;text-align:center}
+    .tag{display:inline-block;margin-right:6px}
+  </style>
+</head>
+<body>
+
+  <div class="wrap">
+    <header>
+      <h1>Brainwave Project</h1>
+      <p>
+        A lightweight EEG pipeline that turns motor-imagery brain signals into decisions.
+        Built on the BCI Competition IV-2a dataset using <span class="pill">CSP</span> feature extraction +
+        <span class="pill">SVM</span> classification. Current best window:
+        <span class="pill">1.5–4.0s</span>. Best config: <span class="pill">nc=8</span>, <span class="pill">C=2.0</span>, <span class="pill">cov=concat</span>.
+      </p>
+      <a class="cta" href="#results">See Results ↓</a>
+    </header>
+
+    <section id="about">
+      <h2>What this is</h2>
+      <div class="grid grid-2">
+        <div>
+          <p>
+            The goal: classify <strong>Left</strong> vs <strong>Right</strong> hand motor imagery from multi-channel EEG.
+            We segment trials, clean them (notch + 8–30&nbsp;Hz bandpass), crop to the motor-relevant window,
+            learn CSP spatial filters, and run an SVM on the log-variance CSP features.
+          </p>
+          <ul>
+            <li>Dataset: <em>BCI Competition IV-2a</em> (subject A01T)</li>
+            <li>Sampling rate: <code>250 Hz</code>, Channels: <code>25</code></li>
+            <li>Trial length: <code>4.5 s</code> → cropped to <code>1.5–4.0 s</code></li>
+          </ul>
+          <div class="kpi">
+            <div><div class="small">Accuracy</div><div style="font-size:22px;font-weight:700">~89%</div></div>
+            <div><div class="small">Classes</div><div style="font-size:22px;font-weight:700">Left / Right</div></div>
+            <div><div class="small">Model</div><div style="font-size:22px;font-weight:700">CSP + SVM</div></div>
+          </div>
+        </div>
+        <div>
+          <!-- Replace this with a real image -->
+          <img src="images/code.png" >
+          <p class="small">Some preprocessing functions.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="pipeline">
+      <h2>Pipeline</h2>
+      <div class="grid grid-2">
+        <div>
+          <ol>
+            <li>Load &amp; segment runs → trials (25×1125 samples)</li>
+            <li>Filter: <code>notch(60/120 Hz)</code>, <code>bandpass(8–30 Hz)</code></li>
+            <li>Crop: <code>start=1.5s</code>, <code>dur=2.5s</code></li>
+            <li>Features: <code>CSP (nc=8, cov=concat)</code>, log-var</li>
+            <li>Classifier: <code>SVM RBF (C=2.0, gamma=scale)</code></li>
+            <li>Validation: 5-fold stratified CV + held-out eval</li>
+          </ol>
+          <p class="small">
+            Code: <code>scripts/load_bci_data.py</code> (training) and <code>scripts/test_model.py</code> (evaluation).
+          </p>
+        </div>
+        <div>
+          <!-- Replace with your CSP topomap/features or model diagram -->
+          <img src="images/exampleTrial.jpeg" alt="CSP features">
+          <p class="small">CSP features illustration.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="results">
+      <h2>Results</h2>
+      <div class="grid grid-2">
+        <div>
+          <p>
+            On the left/right subset of A01T with the best window,
+            we achieve ~<strong>0.889 accuracy</strong>.
+            Confusion matrix below shows balanced performance:
+          </p>
+          <ul>
+            <li>Left: precision 0.92, recall 0.85, F1 0.88</li>
+            <li>Right: precision 0.86, recall 0.93, F1 0.89</li>
+          </ul>
+          <p class="tag pill">Window: 1.5–4.0s</p>
+          <p class="tag pill">nc=8</p>
+          <p class="tag pill">C=2.0</p>
+          <p class="tag pill">cov=concat</p>
+          <p class="tag pill">reg=ledoit_wolf</p>
+        </div>
+        <div>
+          <!-- Put your saved confusion matrix image here -->
+          <img src="images/confusion_matrix.jpeg" alt="Confusion Matrix">
+          <p class="small">Confusion Matrix from <code>test_model.py</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="download">
+      <h2>Try the model</h2>
+      <p>
+        The trained pipeline is serialized to <code>models/csp_svm_final.joblib</code>.
+        Load it with <code>joblib.load</code>, apply the same preprocessing and cropping,
+        then run <code>csp.transform</code> → <code>clf.predict</code>.
+      </p>
+      <pre style="white-space:pre-wrap;background:#0c0f1f;border:1px solid var(--line);padding:12px;border-radius:10px">
+from joblib import load
+payload = load("models/csp_svm_final.joblib")
+csp, clf = payload["csp"], payload["clf"]
+Xp = preprocess_and_crop(raw_trials)   # your  (n_trials, 25, time)
+Xc = csp.transform(Xp)
+yhat = clf.predict(Xc)
+      </pre>
+    </section>
+
+    <section id="contact">
+      <h2>Contact</h2>
+      <p>
+        Questions or collaboration? Reach out on LinkedIn or open an issue in the repo.
+      </p>
+    </section>
+
+    <footer>
+      © <script>document.write(new Date().getFullYear())</script> Brainwave Project — EEG × ML
+    </footer>
+  </div>
+
+</body>
+</html>
